@@ -12,9 +12,9 @@
 /hx8kdemo_fw.hex
 /hx8kdemo_fw.bin
 /hx8kdemo_sections.lds
-/icebreaker.asc
-/icebreaker.bin
-/icebreaker.json
+/*.asc
+/*.bin
+/*.json
 /icebreaker.log
 /icebreaker.rpt
 /icebreaker_syn.v

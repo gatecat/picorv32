@@ -36,6 +36,7 @@ extern uint32_t sram;
 #define reg_uart_clkdiv (*(volatile uint32_t*)0x02000004)
 #define reg_uart_data (*(volatile uint32_t*)0x02000008)
 #define reg_leds (*(volatile uint32_t*)0x03000000)
+#define regs_unique_id ((volatile uint32_t*)0x02000010)
 
 // --------------------------------------------------------
 
@@ -687,6 +688,17 @@ void main()
 	print_dec(MEM_TOTAL / 1024);
 	print(" KiB\n");
 	print("\n");
+
+	print("Unique ID: \n");
+	for (unsigned i = 0; i < 4; i++) {
+		print("  ");
+		print_hex(regs_unique_id[i], 8);
+		print("\n");
+	}
+	print_dec(MEM_TOTAL / 1024);
+	print(" KiB\n");
+	print("\n");
+
 
 	//cmd_memtest(); // test overwrites bss and data memory
 	print("\n");

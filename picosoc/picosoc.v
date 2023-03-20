@@ -124,12 +124,16 @@ module picosoc (
 	wire [31:0] simpleuart_reg_dat_do;
 	wire        simpleuart_reg_dat_wait;
 
+	wire        unique_id_sel = mem_valid && (mem_addr[31:4] == 32'h 0200_001);
+	wire [1:0] unique_id_index = mem_addr[3:2];
+	wire [31:0] unique_id_dout;
+
 	assign mem_ready = (iomem_valid && iomem_ready) || spimem_ready || ram_ready || spimemio_cfgreg_sel ||
-			simpleuart_reg_div_sel || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait);
+			simpleuart_reg_div_sel || unique_id_sel || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait);
 
 	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata : spimem_ready ? spimem_rdata : ram_ready ? ram_rdata :
 			spimemio_cfgreg_sel ? spimemio_cfgreg_do : simpleuart_reg_div_sel ? simpleuart_reg_div_do :
-			simpleuart_reg_dat_sel ? simpleuart_reg_dat_do : 32'h 0000_0000;
+			simpleuart_reg_dat_sel ? simpleuart_reg_dat_do : unique_id_sel ? unique_id_dout : 32'h 0000_0000;
 
 	picorv32 #(
 		.STACKADDR(STACKADDR),
@@ -205,6 +209,11 @@ module picosoc (
 		.reg_dat_wait(simpleuart_reg_dat_wait)
 	);
 
+	unique_id unique_id_rom (
+		.index(unique_id_index),
+		.data(unique_id_dout)
+	);
+
 	always @(posedge clk)
 		ram_ready <= mem_valid && !mem_ready && mem_addr < 4*MEM_WORDS;
 
@@ -260,3 +269,20 @@ module picosoc_mem #(
 	end
 endmodule
 
+module unique_id(
+	input [1:0] index,
+	output [31:0] data
+);
+	generate
+		genvar ii;
+		for (ii = 0; ii < 32; ii = ii + 1'b1) begin: luts
+		(* unique_id_idx=ii, keep *) SB_LUT4
+			#(
+				.LUT_INIT(4'h6)
+			) lut_i (
+				.I0(index[0]), .I1(index[1]),
+				.O(data[ii])
+			); 
+		end
+	endgenerate
+endmodule
