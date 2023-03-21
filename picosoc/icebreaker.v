@@ -24,7 +24,7 @@
 `define PICOSOC_MEM ice40up5k_spram
 
 module icebreaker (
-	input clk,
+	input clk, btn_n,
 
 	output ser_tx,
 	input ser_rx,
@@ -43,15 +43,19 @@ module icebreaker (
 	inout  flash_io0,
 	inout  flash_io1,
 	inout  flash_io2,
-	inout  flash_io3
+	inout  flash_io3,
+
+	inout [7:0] pmod,
 );
 	parameter integer MEM_WORDS = 32768;
+
+	wire [7:0] pmod_io_di, pmod_io_do, pmod_io_oe;
 
 	reg [5:0] reset_cnt = 0;
 	wire resetn = &reset_cnt;
 
 	always @(posedge clk) begin
-		reset_cnt <= reset_cnt + !resetn;
+		reset_cnt <= btn_n ? reset_cnt + !resetn : 6'b0; 
 	end
 
 	wire [7:0] leds;
@@ -78,6 +82,16 @@ module icebreaker (
 		.OUTPUT_ENABLE({flash_io3_oe, flash_io2_oe, flash_io1_oe, flash_io0_oe}),
 		.D_OUT_0({flash_io3_do, flash_io2_do, flash_io1_do, flash_io0_do}),
 		.D_IN_0({flash_io3_di, flash_io2_di, flash_io1_di, flash_io0_di})
+	);
+
+	SB_IO #(
+		.PIN_TYPE(6'b 1010_01),
+		.PULLUP(1'b 0)
+	) pmod_io_buf [7:0] (
+		.PACKAGE_PIN(pmod),
+		.OUTPUT_ENABLE(pmod_io_oe),
+		.D_OUT_0(pmod_io_do),
+		.D_IN_0(pmod_io_di)
 	);
 
 	wire        iomem_valid;
@@ -146,6 +160,10 @@ module icebreaker (
 		.iomem_wstrb  (iomem_wstrb ),
 		.iomem_addr   (iomem_addr  ),
 		.iomem_wdata  (iomem_wdata ),
-		.iomem_rdata  (iomem_rdata )
+		.iomem_rdata  (iomem_rdata ),
+
+		.pmod_io_do   (pmod_io_do  ),
+		.pmod_io_oe   (pmod_io_oe  ),
+		.pmod_io_di   (pmod_io_di  )
 	);
 endmodule

@@ -67,7 +67,11 @@ module picosoc (
 	input  flash_io0_di,
 	input  flash_io1_di,
 	input  flash_io2_di,
-	input  flash_io3_di
+	input  flash_io3_di,
+
+	output reg [7:0] pmod_io_do,
+	output reg [7:0] pmod_io_oe,
+	input  [7:0] pmod_io_di
 );
 	parameter [0:0] BARREL_SHIFTER = 1;
 	parameter [0:0] ENABLE_MUL = 1;
@@ -124,12 +128,17 @@ module picosoc (
 	wire [31:0] simpleuart_reg_dat_do;
 	wire        simpleuart_reg_dat_wait;
 
+	wire        pmod_io_do_sel = mem_valid && (mem_addr == 32'h 0200_0010);
+	wire        pmod_io_oe_sel = mem_valid && (mem_addr == 32'h 0200_0014);
+	wire        pmod_io_di_sel = mem_valid && (mem_addr == 32'h 0200_0018);
+
+
 	assign mem_ready = (iomem_valid && iomem_ready) || spimem_ready || ram_ready || spimemio_cfgreg_sel ||
-			simpleuart_reg_div_sel || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait);
+			simpleuart_reg_div_sel || (simpleuart_reg_dat_sel && !simpleuart_reg_dat_wait) || pmod_io_do_sel || pmod_io_oe_sel || pmod_io_di_sel;
 
 	assign mem_rdata = (iomem_valid && iomem_ready) ? iomem_rdata : spimem_ready ? spimem_rdata : ram_ready ? ram_rdata :
 			spimemio_cfgreg_sel ? spimemio_cfgreg_do : simpleuart_reg_div_sel ? simpleuart_reg_div_do :
-			simpleuart_reg_dat_sel ? simpleuart_reg_dat_do : 32'h 0000_0000;
+			simpleuart_reg_dat_sel ? simpleuart_reg_dat_do : pmod_io_do_sel ? {24'h0, pmod_io_do} : pmod_io_oe_sel ? {24'h0, pmod_io_oe} : pmod_io_di_sel ? {24'h0, pmod_io_di} : 32'h 0000_0000;
 
 	picorv32 #(
 		.STACKADDR(STACKADDR),
@@ -207,6 +216,18 @@ module picosoc (
 
 	always @(posedge clk)
 		ram_ready <= mem_valid && !mem_ready && mem_addr < 4*MEM_WORDS;
+
+	always @(posedge clk) begin
+		if (!resetn) begin
+			pmod_io_do <= 8'h0;
+			pmod_io_oe <= 8'h0;
+		end else begin
+			if (pmod_io_do_sel && mem_wstrb[0])
+				pmod_io_do <= mem_wdata[7:0];
+			if (pmod_io_oe_sel && mem_wstrb[0])
+				pmod_io_oe <= mem_wdata[7:0];
+		end
+	end
 
 	`PICOSOC_MEM #(
 		.WORDS(MEM_WORDS)
